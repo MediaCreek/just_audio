@@ -727,12 +727,39 @@
 
 - (void)onItemStalled:(NSNotification *)notification {
     //IndexedPlayerItem *playerItem = (IndexedPlayerItem *)notification.object;
-    //NSLog(@"onItemStalled");
+    //if we trigger an error in onFailToComplete _player.currentItem may become nil
+    if(!_player.currentItem) return;
+    NSTimeInterval availableDur = [self availableDuration];
+    NSLog(@"onItemStalled");
+    NSLog(@"Handle stalled. Available: %lf", availableDur);
+    NSLog(@"Handle stalled. Current time: %lf", CMTimeGetSeconds(_player.currentItem.currentTime));
+    NSLog(@"Handle stalled. Player rate:  %lf", _player.rate);
+
+    //playbackLikelyToKeepUp won't be necesarly true if isPlaybackBufferFull is healthy
+    if (_player.currentItem.playbackLikelyToKeepUp || _player.currentItem.isPlaybackBufferFull ||
+        availableDur - CMTimeGetSeconds(_player.currentItem.currentTime) > 5.0) {
+        [_player play];
+    } else {
+        [self performSelector:@selector(onItemStalled:) withObject:notification afterDelay:0.5]; //try again
+    }
+}
+
+- (NSTimeInterval) availableDuration
+{
+    NSArray *loadedTimeRanges = [[_player currentItem] loadedTimeRanges];
+    CMTimeRange timeRange = [[loadedTimeRanges objectAtIndex:0] CMTimeRangeValue];
+    Float64 startSeconds = CMTimeGetSeconds(timeRange.start);
+    Float64 durationSeconds = CMTimeGetSeconds(timeRange.duration);
+    NSTimeInterval result = startSeconds + durationSeconds;
+    return result;
 }
 
 - (void)onFailToComplete:(NSNotification *)notification {
-    //IndexedPlayerItem *playerItem = (IndexedPlayerItem *)notification.object;
-    //NSLog(@"onFailToComplete");
+    IndexedPlayerItem *playerItem = (IndexedPlayerItem *)notification.object;
+    NSLog(@"onFailToComplete");
+    //send an error message to Flutter side
+    //see https://github.com/ryanheise/just_audio/issues/1277
+    [self sendErrorForItem:playerItem];
 }
 
 - (void)onComplete:(NSNotification *)notification {
