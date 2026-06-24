@@ -747,6 +747,7 @@
 - (NSTimeInterval) availableDuration
 {
     NSArray *loadedTimeRanges = [[_player currentItem] loadedTimeRanges];
+    if (loadedTimeRanges.count == 0) return 0.0;
     CMTimeRange timeRange = [[loadedTimeRanges objectAtIndex:0] CMTimeRangeValue];
     Float64 startSeconds = CMTimeGetSeconds(timeRange.start);
     Float64 durationSeconds = CMTimeGetSeconds(timeRange.duration);
